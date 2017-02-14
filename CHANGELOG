@@ -1,5 +1,67 @@
 CONTRIBUTIONS & CHANGE HISTORY
 ==============================
+
+28-01-2017 - v4.4
+             * Fixes to SOCKS over SSL processing
+             * Added stream_full_chunks option
+             * Merged pull requests 145, 151
+
+07-06-2016 - v4.3
+             * Adopted erlang.mk for compiling. I find it easier to understand
+               how 'make' behaves compared to rebar. This repo can still be built
+               using rebar for those who prefer it
+             * Removed references to lager. Introduced configurable logging function
+             * Fixed an issue where the calling process was getting an extra
+               spurious timeout message when the request was timing out
+
+19-04-2016 - v4.2.4
+             * Fixed travis-ci build as it was failing in running tests. 
+               No code changes to ibrowse
+
+19-04-2016 - v4.2.3
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/143
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/142
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/139
+             * Fixed behaviour of option preserve_status_line
+
+25-11-2015 - v4.2.2
+             * Fix to ibrowse.app.src to enable publishing using Hex
+
+25-11-2015 - v4.2.1
+             * Merged pull request https://github.com/cmullaparthi/ibrowse/pull/132
+             * Merged pull request https://github.com/cmullaparthi/ibrowse/pull/137
+
+28-09-2015 - v4.2
+             * Merged long pending improvements to pipelining
+               https://github.com/cmullaparthi/ibrowse/pull/123
+             * Merged pull request https://github.com/cmullaparthi/ibrowse/pull/131
+
+03-08-2015 - v4.1.2
+             * R18 compatibility fix
+               https://github.com/cmullaparthi/ibrowse/issues/129
+             * Add max_attempts option
+               https://github.com/cmullaparthi/ibrowse/pull/125
+             * Fix for https://github.com/cmullaparthi/ibrowse/pull/120
+             * Enhanced SOCKS5 support
+               https://github.com/cmullaparthi/ibrowse/pull/117
+
+10-07-2014 - v4.1.1
+             * Added support for accepting binaries as header names
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/110
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/111
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/112
+
+18-04-2013 - v4.1.0
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/101
+             * Support for https://github.com/cmullaparthi/ibrowse/issues/90
+             * Fix for https://github.com/cmullaparthi/ibrowse/issues/86
+             * Merged various contributions. Please see commit history for details
+             * Introduced the return_raw_request option
+
+09-04-2013 - v4.0.2
+             * Tagging master with new version to cover changes
+               contributed over the past few months via various pull requests
+
 07-08-2012 - v4.0.1
              * Fix issue 67 properly.
 

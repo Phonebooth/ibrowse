@@ -5,14 +5,13 @@
 
 -module(ibrowse_test).
 -export([
-	 load_test/3,
+	 load_test_/3,
 	 send_reqs_1/3,
 	 do_send_req/2,
+         local_unit_tests/0,
 	 unit_tests/0,
-	 unit_tests/1,
-	 unit_tests_1/2,
-	 ue_test/0,
-	 ue_test/1,
+         unit_tests/2,
+         unit_tests_1/3,
 	 verify_chunked_streaming/0,
 	 verify_chunked_streaming/1,
          test_chunked_streaming_once/0,
@@ -27,8 +26,107 @@
          test_head_transfer_encoding/0,
          test_head_transfer_encoding/1,
          test_head_response_with_body/0,
-         test_head_response_with_body/1
+         test_head_response_with_body/1,
+         test_303_response_with_no_body/0,
+         test_303_response_with_no_body/1,
+         test_303_response_with_a_body/0,
+         test_303_response_with_a_body/1,
+         test_preserve_status_line/0,
+         test_binary_headers/0,
+         test_binary_headers/1,
+         test_generate_body_0/0,
+         test_retry_of_requests/0,
+         test_retry_of_requests/1,
+	 test_save_to_file_no_content_length/0,
+         socks5_noauth/0,
+         socks5_auth_succ/0,
+         socks5_auth_fail/0
 	]).
+
+-include_lib("ibrowse/include/ibrowse.hrl").
+
+%%------------------------------------------------------------------------------
+%% Unit Tests
+%%------------------------------------------------------------------------------
+-define(LOCAL_TESTS, [
+                      {local_test_fun, socks5_noauth, []},
+                      {local_test_fun, socks5_auth_succ, []},
+                      {local_test_fun, socks5_auth_fail, []},
+                      {local_test_fun, test_preserve_status_line, []},
+		      {local_test_fun, test_save_to_file_no_content_length, []},
+                      {local_test_fun, test_20122010, []},
+                      {local_test_fun, test_pipeline_head_timeout, []},
+                      {local_test_fun, test_head_transfer_encoding, []},
+                      {local_test_fun, test_head_response_with_body, []},
+                      {local_test_fun, test_303_response_with_a_body, []},
+		      {local_test_fun, test_303_response_with_no_body, []},
+                      {local_test_fun, test_binary_headers, []},
+                      {local_test_fun, test_retry_of_requests, []},
+		      {local_test_fun, verify_chunked_streaming, []},
+		      {local_test_fun, test_chunked_streaming_once, []},
+		      {local_test_fun, test_generate_body_0, []}
+                     ]).
+
+-define(TEST_LIST, [{"http://intranet/messenger", get},
+		    {"http://www.google.co.uk", get},
+		    {"http://www.google.com", get},
+		    {"http://www.google.com", options},
+                    {"https://mail.google.com", get},
+		    {"http://www.sun.com", get},
+		    {"http://www.oracle.com", get},
+		    {"http://www.bbc.co.uk", get},
+		    {"http://www.bbc.co.uk", trace},
+		    {"http://www.bbc.co.uk", options},
+		    {"http://yaws.hyber.org", get},
+		    {"http://jigsaw.w3.org/HTTP/ChunkedScript", get},
+		    {"http://jigsaw.w3.org/HTTP/TE/foo.txt", get},
+		    {"http://jigsaw.w3.org/HTTP/TE/bar.txt", get},
+		    {"http://jigsaw.w3.org/HTTP/connection.html", get},
+		    {"http://jigsaw.w3.org/HTTP/cc.html", get},
+		    {"http://jigsaw.w3.org/HTTP/cc-private.html", get},
+		    {"http://jigsaw.w3.org/HTTP/cc-proxy-revalidate.html", get},
+		    {"http://jigsaw.w3.org/HTTP/cc-nocache.html", get},
+		    {"http://jigsaw.w3.org/HTTP/h-content-md5.html", get},
+		    {"http://jigsaw.w3.org/HTTP/h-retry-after.html", get},
+		    {"http://jigsaw.w3.org/HTTP/h-retry-after-date.html", get},
+		    {"http://jigsaw.w3.org/HTTP/neg", get},
+		    {"http://jigsaw.w3.org/HTTP/negbad", get},
+		    {"http://jigsaw.w3.org/HTTP/400/toolong/", get},
+		    {"http://jigsaw.w3.org/HTTP/300/", get},
+		    {"http://jigsaw.w3.org/HTTP/Basic/", get, [{basic_auth, {"guest", "guest"}}]},
+		    {"http://jigsaw.w3.org/HTTP/CL/", get},
+		    {"http://www.httpwatch.com/httpgallery/chunked/", get},
+                    {"https://github.com", get, [{ssl_options, [{depth, 2}]}]}
+		   ]).
+
+socks5_noauth() ->
+    case ibrowse:send_req("http://localhost:8181/success", [], get, [],
+                          [{socks5_host, "localhost"}, {socks5_port, 8282}], 2000) of
+	{ok, "200", _, _} ->
+            success;
+	Err ->
+	    Err
+    end.
+
+socks5_auth_succ() ->
+    case ibrowse:send_req("http://localhost:8181/success", [], get, [],
+                          [{socks5_host, "localhost"}, {socks5_port, 8383},
+                           {socks5_user, <<"user">>}, {socks5_password, <<"password">>}], 2000) of
+	{ok, "200", _, _} ->
+            success;
+	Err ->
+	    Err
+    end.
+
+socks5_auth_fail() ->
+    case ibrowse:send_req("http://localhost:8181/success", [], get, [],
+                          [{socks5_host, "localhost"}, {socks5_port, 8282},
+                           {socks5_user, <<"user">>}, {socks5_password, <<"wrong_password">>}], 2000) of
+        {error,{conn_failed,{error,unacceptable}}} ->
+            success;
+	Err ->
+	    Err
+    end.
 
 test_stream_once(Url, Method, Options) ->
     test_stream_once(Url, Method, Options, 5000).
@@ -69,9 +167,10 @@ test_stream_once(Req_id) ->
 	{ibrowse_async_response_end, Req_id} ->
 	    ok
     end.
+
 %% Use ibrowse:set_max_sessions/3 and ibrowse:set_max_pipeline_size/3 to
 %% tweak settings before running the load test. The defaults are 10 and 10.
-load_test(Url, NumWorkers, NumReqsPerWorker) when is_list(Url),
+load_test_(Url, NumWorkers, NumReqsPerWorker) when is_list(Url),
                                                   is_integer(NumWorkers),
                                                   is_integer(NumReqsPerWorker),
                                                   NumWorkers > 0,
@@ -79,17 +178,19 @@ load_test(Url, NumWorkers, NumReqsPerWorker) when is_list(Url),
     proc_lib:spawn(?MODULE, send_reqs_1, [Url, NumWorkers, NumReqsPerWorker]).
 
 send_reqs_1(Url, NumWorkers, NumReqsPerWorker) ->
-    Start_time = now(),
+    Start_time = os:timestamp(),
     ets:new(pid_table, [named_table, public]),
     ets:new(ibrowse_test_results, [named_table, public]),
     ets:new(ibrowse_errors, [named_table, public, ordered_set]),
+    ets:new(ibrowse_counter, [named_table, public, ordered_set]),
+    ets:insert(ibrowse_counter, {req_id, 1}),
     init_results(),
     process_flag(trap_exit, true),
     log_msg("Starting spawning of workers...~n", []),
     spawn_workers(Url, NumWorkers, NumReqsPerWorker),
     log_msg("Finished spawning workers...~n", []),
     do_wait(Url),
-    End_time = now(),
+    End_time = os:timestamp(),
     log_msg("All workers are done...~n", []),
     log_msg("ibrowse_test_results table: ~n~p~n", [ets:tab2list(ibrowse_test_results)]),
     log_msg("Start time: ~1000.p~n", [calendar:now_to_local_time(Start_time)]),
@@ -167,7 +268,7 @@ do_send_req_1(Url, NumReqs) ->
 	{error, retry_later} ->
 	    ets:update_counter(ibrowse_test_results, retry_later, 1);
 	Err ->
-	    ets:insert(ibrowse_errors, {now(), Err}),
+	    ets:insert(ibrowse_errors, {os:timestamp(), Err}),
 	    ets:update_counter(ibrowse_test_results, other_error, 1),
 	    ok
     end,
@@ -178,7 +279,7 @@ dump_errors() ->
 	0 ->
 	    ok;
 	_ ->
-	    {A, B, C} = now(),
+	    {A, B, C} = os:timestamp(),
 	    Filename = lists:flatten(
 			 io_lib:format("ibrowse_errors_~p_~p_~p.txt" , [A, B, C])),
 	    case file:open(Filename, [write, delayed_write, raw]) of
@@ -197,57 +298,23 @@ dump_errors(Key, Iod) ->
     file:write(Iod, io_lib:format("~p~n", [Term])),
     dump_errors(ets:next(ibrowse_errors, Key), Iod).
 
-%%------------------------------------------------------------------------------
-%% Unit Tests
-%%------------------------------------------------------------------------------
--define(TEST_LIST, [{"http://intranet/messenger", get},
-		    {"http://www.google.co.uk", get},
-		    {"http://www.google.com", get},
-		    {"http://www.google.com", options},
-                    {"https://mail.google.com", get},
-		    {"http://www.sun.com", get},
-		    {"http://www.oracle.com", get},
-		    {"http://www.bbc.co.uk", get},
-		    {"http://www.bbc.co.uk", trace},
-		    {"http://www.bbc.co.uk", options},
-		    {"http://yaws.hyber.org", get},
-		    {"http://jigsaw.w3.org/HTTP/ChunkedScript", get},
-		    {"http://jigsaw.w3.org/HTTP/TE/foo.txt", get},
-		    {"http://jigsaw.w3.org/HTTP/TE/bar.txt", get},
-		    {"http://jigsaw.w3.org/HTTP/connection.html", get},
-		    {"http://jigsaw.w3.org/HTTP/cc.html", get},
-		    {"http://jigsaw.w3.org/HTTP/cc-private.html", get},
-		    {"http://jigsaw.w3.org/HTTP/cc-proxy-revalidate.html", get},
-		    {"http://jigsaw.w3.org/HTTP/cc-nocache.html", get},
-		    {"http://jigsaw.w3.org/HTTP/h-content-md5.html", get},
-		    {"http://jigsaw.w3.org/HTTP/h-retry-after.html", get},
-		    {"http://jigsaw.w3.org/HTTP/h-retry-after-date.html", get},
-		    {"http://jigsaw.w3.org/HTTP/neg", get},
-		    {"http://jigsaw.w3.org/HTTP/negbad", get},
-		    {"http://jigsaw.w3.org/HTTP/400/toolong/", get},
-		    {"http://jigsaw.w3.org/HTTP/300/", get},
-		    {"http://jigsaw.w3.org/HTTP/Basic/", get, [{basic_auth, {"guest", "guest"}}]},
-		    {"http://jigsaw.w3.org/HTTP/CL/", get},
-		    {"http://www.httpwatch.com/httpgallery/chunked/", get},
-                    {"https://github.com", get, [{ssl_options, [{depth, 2}]}]},
-                    {local_test_fun, test_20122010, []},
-                    {local_test_fun, test_pipeline_head_timeout, []},
-                    {local_test_fun, test_head_transfer_encoding, []},
-                    {local_test_fun, test_head_response_with_body, []}
-		   ]).
+local_unit_tests() ->
+    unit_tests([], ?LOCAL_TESTS).
 
 unit_tests() ->
-    unit_tests([]).
+    unit_tests([], ?TEST_LIST).
 
-unit_tests(Options) ->
+unit_tests(Options, Test_list) ->
+    error_logger:tty(false),
     application:start(crypto),
+    application:start(asn1),
     application:start(public_key),
     application:start(ssl),
     (catch ibrowse_test_server:start_server(8181, tcp)),
-    ibrowse:start(),
+    application:start(ibrowse),
     Options_1 = Options ++ [{connect_timeout, 5000}],
     Test_timeout = proplists:get_value(test_timeout, Options, 60000),
-    {Pid, Ref} = erlang:spawn_monitor(?MODULE, unit_tests_1, [self(), Options_1]),
+    {Pid, Ref} = erlang:spawn_monitor(?MODULE, unit_tests_1, [self(), Options_1, Test_list]),
     receive 
 	{done, Pid} ->
 	    ok;
@@ -258,16 +325,17 @@ unit_tests(Options) ->
 	    io:format("Timed out waiting for tests to complete~n", [])
     end,
     catch ibrowse_test_server:stop_server(8181),
+    error_logger:tty(true),
     ok.
 
-unit_tests_1(Parent, Options) ->
+unit_tests_1(Parent, Options, Test_list) ->
     lists:foreach(fun({local_test_fun, Fun_name, Args}) ->
                           execute_req(local_test_fun, Fun_name, Args);
                      ({Url, Method}) ->
 			  execute_req(Url, Method, Options);
 		     ({Url, Method, X_Opts}) ->
 			  execute_req(Url, Method, X_Opts ++ Options)
-		  end, ?TEST_LIST),
+		  end, Test_list),
     Parent ! {done, self()}.
 
 verify_chunked_streaming() ->
@@ -294,7 +362,8 @@ verify_chunked_streaming(Options) ->
     Res2 = compare_responses(Result_without_streaming, Async_response_list, Async_response_bin_once),
     case {Res1, Res2} of
         {success, success} ->
-            io:format("  Chunked streaming working~n", []);
+            io:format("  Chunked streaming working~n", []),
+	    success;
         _ ->
             ok
     end.
@@ -309,7 +378,7 @@ test_chunked_streaming_once(Options) ->
     io:format("  Fetching data with streaming as binary, {active, once}...~n", []),
     case do_async_req_list(Url, get, [once, {response_format, binary} | Options]) of
         {ok, _, _, _} ->
-            io:format("  Success!~n", []);
+            success;
         Err ->
             io:format("  Fail: ~p~n", [Err])
     end.
@@ -361,6 +430,8 @@ wait_for_resp(Pid) ->
 	{'DOWN', _, _, Pid, Reason} ->
 	    {'EXIT', Reason};
 	{'DOWN', _, _, _, _} ->
+	    wait_for_resp(Pid);
+	{'EXIT', _, normal} ->
 	    wait_for_resp(Pid);
 	Msg ->
 	    io:format("Recvd unknown message: ~p~n", [Msg]),
@@ -416,8 +487,9 @@ maybe_stream_next(Req_id, Options) ->
     end.
 
 execute_req(local_test_fun, Method, Args) ->
-    io:format("     ~-54.54w: ", [Method]),
+    reset_ibrowse(),
     Result = (catch apply(?MODULE, Method, Args)),
+    io:format("     ~-54.54w: ", [Method]),
     io:format("~p~n", [Result]);
 execute_req(Url, Method, Options) ->
     io:format("~7.7w, ~50.50s: ", [Method, Url]),
@@ -428,15 +500,6 @@ execute_req(Url, Method, Options) ->
 	Err ->
 	    io:format("~p~n", [Err])
     end.
-
-ue_test() ->
-    ue_test(lists:duplicate(1024, $?)).
-ue_test(Data) ->
-    {Time, Res} = timer:tc(ibrowse_lib, url_encode, [Data]),
-    io:format("Time -> ~p~n", [Time]),
-    io:format("Data Length -> ~p~n", [length(Data)]),
-    io:format("Res Length -> ~p~n", [length(Res)]).
-%    io:format("Result -> ~s~n", [Res]).
 
 log_msg(Fmt, Args) ->
     io:format("~s -- " ++ Fmt,
@@ -464,6 +527,28 @@ test_head_transfer_encoding(Url) ->
 %% Chunked-Encoding response with a non-empty body. Issue #67 on
 %% Github
 %% ------------------------------------------------------------------------------
+test_binary_headers() ->
+    clear_msg_q(),
+    test_binary_headers("http://localhost:8181/ibrowse_echo_header").
+
+test_binary_headers(Url) ->
+    case ibrowse:send_req(Url, [{<<"x-binary">>, <<"x-header">>}], get) of
+        {ok, "200", Headers, _} ->
+            case proplists:get_value("x-binary", Headers) of
+                "x-header" ->
+                    success;
+                V ->
+                    {fail, V}
+            end;
+        Res ->
+            {test_failed, Res}
+    end.
+
+%%------------------------------------------------------------------------------
+%% Test what happens when the response to a HEAD request is a
+%% Chunked-Encoding response with a non-empty body. Issue #67 on
+%% Github
+%% ------------------------------------------------------------------------------
 test_head_response_with_body() ->
     clear_msg_q(),
     test_head_response_with_body("http://localhost:8181/ibrowse_head_transfer_enc").
@@ -477,6 +562,139 @@ test_head_response_with_body(Url) ->
     end.
 
 %%------------------------------------------------------------------------------
+%% Test what happens when a 303 response has no body
+%% Github issue #97 
+%% ------------------------------------------------------------------------------
+test_303_response_with_no_body() ->
+    clear_msg_q(),
+    test_303_response_with_no_body("http://localhost:8181/ibrowse_303_no_body_test").
+
+test_303_response_with_no_body(Url) ->
+    ibrowse:add_config([{allow_303_with_no_body, true}]),
+    case ibrowse:send_req(Url, [], post) of
+        {ok, "303", _, _} ->
+            success;
+        Res ->
+            {test_failed, Res}
+    end.
+
+%% Make sure we don't break requests that do have a body.
+test_303_response_with_a_body() ->
+    clear_msg_q(),
+    test_303_response_with_no_body("http://localhost:8181/ibrowse_303_with_body_test").
+
+test_303_response_with_a_body(Url) ->
+    ibrowse:add_config([{allow_303_with_no_body, true}]),
+    case ibrowse:send_req(Url, [], post) of
+        {ok, "303", _, "abcde"} ->
+            success;
+        Res ->
+            {test_failed, Res}
+    end.
+
+%% Test that the 'preserve_status_line' option works as expected
+test_preserve_status_line() ->
+    case ibrowse:send_req("http://localhost:8181/ibrowse_preserve_status_line", [], get, [],
+                          [{preserve_status_line, true}]) of
+        {ok, "200", [{ibrowse_status_line,<<"HTTP/1.1 200 OKBlah">>} | _], _} ->
+            success;
+        Res ->
+            {test_failed, Res}
+    end.
+
+%%------------------------------------------------------------------------------
+%% Test that when the save_response_to_file option is used with a server which
+%% does not send the Content-Length header, the response is saved correctly to
+%% a file
+%%------------------------------------------------------------------------------
+test_save_to_file_no_content_length() ->
+    clear_msg_q(),
+    {{Y, M, D}, {H, Mi, S}} = calendar:local_time(),
+    Test_file = filename:join
+		  ([".", 
+		    lists:flatten(
+		      io_lib:format("test_save_to_file_no_content_length_~p~p~p_~p~p~p.txt", [Y, M, D, H, Mi, S]))]),
+    try
+	case ibrowse:send_req("http://localhost:8181/ibrowse_send_file_conn_close", [], get, [],
+                              [{save_response_to_file, Test_file}]) of
+	    {ok, "200", _, {file, Test_file}} ->
+		success;
+	    Res ->
+		{test_failed, Res}
+	end
+    after
+	file:delete(Test_file)
+    end.
+
+%%------------------------------------------------------------------------------
+%% Test that retry of requests happens correctly, and that ibrowse doesn't retry
+%% if there is not enough time left
+%%------------------------------------------------------------------------------
+test_retry_of_requests() ->
+    clear_msg_q(),
+    test_retry_of_requests("http://localhost:8181/ibrowse_handle_one_request_only_with_delay").
+
+test_retry_of_requests(Url) ->
+    reset_ibrowse(),
+    Timeout_1 = 2050,
+    Res_1 = test_retry_of_requests(Url, Timeout_1),
+    case lists:filter(fun({_Pid, {ok, "200", _, _}}) ->
+                              true;
+                         (_) -> false
+                      end, Res_1) of
+        [_|_] = X ->
+            Res_1_1 = Res_1 -- X,
+            case lists:all(
+                   fun({_Pid, {error, retry_later}}) ->
+                           true;
+                      (_) ->
+                           false
+                   end, Res_1_1) of
+                true ->
+                    ok;
+                false ->
+                    exit({failed, Timeout_1, Res_1})
+            end;
+        _ ->
+            exit({failed, Timeout_1, Res_1})
+    end,
+    Timeout_2 = 2200,
+    Res_2 = test_retry_of_requests(Url, Timeout_2),
+    case lists:filter(fun({_Pid, {ok, "200", _, _}}) ->
+                              true;
+                         (_) -> false
+                      end, Res_2) of
+        [_|_] = Res_2_X ->
+            Res_2_1 = Res_2 -- Res_2_X,
+            case lists:all(
+                   fun({_Pid, {error, X_err_2}}) ->
+                           (X_err_2 == retry_later) orelse (X_err_2 == req_timedout);
+                      (_) ->
+                           false
+                   end, Res_2_1) of
+                true ->
+                    ok;
+                false ->
+                    exit({failed, {?MODULE, ?LINE}, Timeout_2, Res_2})
+            end;
+        _ ->
+            exit({failed, {?MODULE, ?LINE}, Timeout_2, Res_2})
+    end,
+    success.
+
+test_retry_of_requests(Url, Timeout) ->
+    #url{host = Host, port = Port} = ibrowse_lib:parse_url(Url),
+    ibrowse:set_max_sessions(Host, Port, 1),
+    Parent = self(),
+    Pids = lists:map(fun(_) ->
+                        spawn(fun() ->
+                                 Res = (catch ibrowse:send_req(Url, [], get, [], [], Timeout)),
+                                 Parent ! {self(), Res}
+                              end)
+                     end, lists:seq(1,10)),
+    accumulate_worker_resp(Pids).
+
+%%------------------------------------------------------------------------------
 %% Test what happens when the request at the head of a pipeline times out
 %%------------------------------------------------------------------------------
 test_pipeline_head_timeout() ->
@@ -485,22 +703,27 @@ test_pipeline_head_timeout() ->
 
 test_pipeline_head_timeout(Url) ->
     {ok, Pid} = ibrowse:spawn_worker_process(Url),
+    Fixed_timeout = 2000,
     Test_parent = self(),
     Fun = fun({fixed, Timeout}) ->
-                  spawn(fun() ->
-                                do_test_pipeline_head_timeout(Url, Pid, Test_parent, Timeout)
-                        end);
-             (Timeout_mult) ->
-                  spawn(fun() ->
-                                Timeout = 1000 + Timeout_mult*1000,
-                                do_test_pipeline_head_timeout(Url, Pid, Test_parent, Timeout)
-                        end)
-          end,
-    Pids = [Fun(X) || X <- [{fixed, 32000} | lists:seq(1,10)]],
+        X_pid = spawn(fun() ->
+            do_test_pipeline_head_timeout(Url, Pid, Test_parent, Timeout)
+        end),
+        %% io:format("Pid ~p with a fixed timeout~n", [X_pid]),
+        X_pid;
+        (Timeout_mult) ->
+            Timeout = Fixed_timeout + Timeout_mult*1000,
+            X_pid = spawn(fun() ->
+                do_test_pipeline_head_timeout(Url, Pid, Test_parent, Timeout)
+            end),
+            %% io:format("Pid ~p with a timeout of ~p~n", [X_pid, Timeout]),
+            X_pid
+    end,
+    Pids = [Fun(X) || X <- [{fixed, Fixed_timeout} | lists:seq(1,10)]],
     Result = accumulate_worker_resp(Pids),
     case lists:all(fun({_, X_res}) ->
-                           X_res == {error,req_timedout}
-                   end, Result) of
+        (X_res == {error,req_timedout}) orelse (X_res == {error, connection_closed})
+    end, Result) of
         true ->
             success;
         false ->
@@ -616,6 +839,44 @@ do_test_20122010_1(Expected_resp, Req_id, Acc) ->
             exit({timeout, test_failed})
     end.
 
+%%------------------------------------------------------------------------------
+%% Test requests where body is generated using a Fun
+%%------------------------------------------------------------------------------
+test_generate_body_0() ->
+    Tid = ets:new(ibrowse_test_state, [public]),
+    try
+        Body_1 = <<"Part 1 of the body">>,
+        Body_2 = <<"Part 2 of the body\r\n">>,
+        Size = size(Body_1) + size(Body_2),
+        Body = list_to_binary([Body_1, Body_2]),
+        Fun = fun() ->
+                      case ets:lookup(Tid, body_gen_state) of
+                          [] ->
+                              ets:insert(Tid, {body_gen_state, 1}),
+                              {ok, Body_1};
+                          [{_, 1}]->
+                              ets:insert(Tid, {body_gen_state, 2}),
+                              {ok, Body_2};
+                          [{_, 2}] ->
+                              eof
+                      end
+              end,
+        case ibrowse:send_req("http://localhost:8181/echo_body",
+                              [{"Content-Length", Size}],
+                              post,
+                              Fun,
+                              [{response_format, binary},
+                               {http_vsn, {1,1}}]) of
+            {ok, "200", _, Body} ->
+                success;
+            Err ->
+                io:format("Test failed : ~p~n", [Err]),
+                {test_failed, Err}
+        end
+    after
+        ets:delete(Tid)
+    end.
+
 do_trace(Fmt, Args) ->
     do_trace(get(my_trace_flag), Fmt, Args).
 
@@ -623,3 +884,7 @@ do_trace(true, Fmt, Args) ->
     io:format("~s -- " ++ Fmt, [ibrowse_lib:printable_date() | Args]);
 do_trace(_, _, _) ->
     ok.
+
+reset_ibrowse() ->
+    application:stop(ibrowse),
+    application:start(ibrowse).

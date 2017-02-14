@@ -1,25 +1,18 @@
-IBROWSE_VSN = $(shell sed -n 's/.*{vsn,.*"\(.*\)"}.*/\1/p' src/ibrowse.app.src)
+PROJECT=ibrowse
+PLT_APPS=erts kernel stdlib ssl crypto public_key
+TEST_ERLC_OPTS=-pa ../ibrowse/ebin
 
-all:
-	./rebar compile
+include erlang.mk
 
-clean:
-	./rebar clean
+test: app eunit unit_tests old_tests
+	@echo "====================================================="
 
-install: all
-	mkdir -p $(DESTDIR)/lib/ibrowse-$(IBROWSE_VSN)/
-	cp -r ebin $(DESTDIR)/lib/ibrowse-$(IBROWSE_VSN)/
+unit_tests:
+	@echo "====================================================="
+	@echo "Running tests..."
+	@cd test && make test && cd ..
 
-test: all
-	./rebar eunit
-	erl -noshell -pa .eunit -pa test -s ibrowse -s ibrowse_test unit_tests \
-	-s ibrowse_test verify_chunked_streaming \
-	-s ibrowse_test test_chunked_streaming_once \
-	-s erlang halt
-
-xref: all
-	./rebar xref
-
-docs:
-	erl -noshell \
-		-eval 'edoc:application(ibrowse, ".", []), init:stop().'
+old_tests:
+	@echo "====================================================="
+	@echo "Running old tests..."
+	@cd test && make old_tests && cd ..

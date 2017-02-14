@@ -1,4 +1,4 @@
-# ibrowse [![Build Status](https://secure.travis-ci.org/johannesh/ibrowse.png)](http://travis-ci.org/johannesh/ibrowse)
+# ibrowse [![Build Status](https://secure.travis-ci.org/cmullaparthi/ibrowse.png)](http://travis-ci.org/cmullaparthi/ibrowse)
 
 ibrowse is a HTTP client written in erlang.
 
@@ -7,7 +7,7 @@ ibrowse is a HTTP client written in erlang.
 
 **Comments to:** chandrashekhar.mullaparthi@gmail.com
 
-**Current Version:** 4.0.1
+**Current Version:** 4.4
 
 **Latest Version:** git://github.com/cmullaparthi/ibrowse.git
 
@@ -27,7 +27,8 @@ ibrowse is a HTTP client written in erlang.
 *  Asynchronous requests. Responses are streamed to a process
 *  Basic authentication
 *  Supports proxy authentication
-*  Supports socks5
+*  Supports SOCKS5
+    * Authentication methods 0 (No authentication) and 2(Username/password) supported
 *  Can talk to secure webservers using SSL
 *  *Any other features in the code not listed here :)*
 
@@ -263,7 +264,7 @@ Example of a `TRACE` request. Very interesting! yaws.hyber.org didn't
 support this. Nor did www.google.com. But good old BBC supports this:
 
 ```erlang
-35> 37> ibrowse:send_req("http://www.bbc.co.uk/", [], trace, [],
+37> ibrowse:send_req("http://www.bbc.co.uk/", [], trace, [],
                          [{proxy_user, "XXXXX"},
                           {proxy_password, "XXXXX"},
                           {proxy_host, "proxy"},
@@ -292,5 +293,5 @@ ibrowse:send_req("http://google.com", [], get, [],
   [{socks5_host, "127.0.0.1"},
   {socks5_port, 5335},
   {socks5_user, "user4321"},
-  {socks5_pass, "pass7654"}]).
+  {socks5_password, "pass7654"}]).
 ```
